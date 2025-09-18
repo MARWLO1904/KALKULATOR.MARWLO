@@ -1,15 +1,11 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pl">
-<head><link rel="icon" type="image/png" href="logo.png"><head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kalkulator.Naleśnik</title>
-    <meta name="description" content="Kalkulator online Kalkulator.Naleśnik – dodawanie, odejmowanie, mnożenie, dzielenie.">
-</head>
-
+<head>
+  <link rel="icon" type="image/png" href="logo.png">
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Kalkulator</title>
+  <title>Kalkulator.Naleśnik</title>
+  <meta name="description" content="Kalkulator online Kalkulator.Naleśnik – prosty i nowoczesny kalkulator w przeglądarce. Dodawanie, odejmowanie, mnożenie, dzielenie i procenty.">
   <style>
     :root{
       --bg:#0f1724; --panel:#0b1220; --accent:#7c3aed; --muted:#94a3b8;
@@ -19,10 +15,21 @@
     *{box-sizing:border-box}
     body{
       margin:0; min-height:100vh;
-      display:flex; align-items:center; justify-content:center;
+      display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
       background:linear-gradient(180deg,#071024 0%, #081129 100%);
       color:#e6eef8;
       font-size:16px;
+      padding:30px 10px;
+    }
+    h1{
+      font-size:28px;
+      margin-bottom:8px;
+      text-align:center;
+    }
+    p{
+      color:var(--muted);
+      text-align:center;
+      margin-bottom:20px;
     }
     .calculator{
       width:360px; max-width:95vw;
@@ -30,7 +37,6 @@
       border-radius:16px; padding:18px; box-shadow: 0 8px 30px rgba(2,6,23,0.7);
       border: 1px solid rgba(255,255,255,0.03);
     }
-
     .display{
       background:var(--panel); padding:14px; border-radius:10px;
       min-height:72px; display:flex; flex-direction:column; justify-content:center;
@@ -42,7 +48,6 @@
     .result{
       font-size:28px; font-weight:600; text-align:right; word-break:break-all;
     }
-
     .grid{
       display:grid; grid-template-columns: repeat(4,1fr); gap:10px;
     }
@@ -57,7 +62,6 @@
     .wide{ grid-column: span 2; }
     .small{ padding:12px; font-size:16px; }
     .muted{ background:transparent; color:var(--muted); border:1px solid rgba(255,255,255,0.03) }
-
     @media (max-width:420px){
       .calculator{ width:320px }
       .result{ font-size:24px }
@@ -65,6 +69,9 @@
   </style>
 </head>
 <body>
+  <h1>Witaj na stronie Kalkulator.Naleśnik!</h1>
+  <p>Tu możesz szybko i łatwo wykonywać obliczenia online.</p>
+
   <div class="calculator" role="application" aria-label="Kalkulator">
     <div class="display" aria-live="polite">
       <div class="history" id="history">&nbsp;</div>
@@ -104,7 +111,6 @@
       const resultEl = document.getElementById('result');
       const keys = document.getElementById('keys');
 
-      // we store an expression using . as decimal separator internally
       let expr = '';
 
       function updateDisplay(){
@@ -112,162 +118,91 @@
         resultEl.textContent = expr ? expr.replace(/\*/g, '×').replace(/\//g,'÷') : '0';
       }
 
-      // validate expression: allow digits, operators +-*/% . ( ) and spaces
       function isValidExpression(s){
-        // empty is valid
         if(!s) return true;
-        // only allowed chars
         if(!/^[0-9+\-*/().%\s]*$/.test(s)) return false;
-        // disallow consecutive operators (except minus as unary after '(' or start)
-        // basic check: no two of +*/% next to each other
         if(/[\+\*\/%]{2,}/.test(s)) return false;
-        // no operator right after '(' except minus
         if(/\([\+\*\/%]/.test(s)) return false;
-        // parentheses balance
         let bal = 0;
         for(let ch of s){
           if(ch === '(') bal++;
           if(ch === ')') bal--;
           if(bal < 0) return false;
         }
-        if(bal !== 0) return false;
-        return true;
+        return bal === 0;
       }
 
       function safeEval(s){
-        // replace commas with dots (user may press comma)
         s = s.replace(/,/g, '.').trim();
-
         if(!isValidExpression(s)) throw new Error('Nieprawidłowe wyrażenie');
-
-        // convert percent: e.g. 50% -> (50/100)
-        // replace number% with (number/100)
         s = s.replace(/(\d+(\.\d+)?)%/g, '($1/100)');
-
-        // final safety check: only digits and allowed tokens remain
         if(!/^[0-9+\-*/().\s]*$/.test(s)) throw new Error('Nieprawidłowe wyrażenie');
-
-        // use Function to evaluate arithmetic (faster than parsing by hand)
-        // try/catch for runtime errors (division by zero etc.)
-        // eslint-disable-next-line no-new-func
         const fn = new Function('return ' + s);
         const value = fn();
-
         if(!isFinite(value)) throw new Error('Wynik nie jest skończony');
         return value;
       }
 
-      // handle button clicks
       keys.addEventListener('click', (e) => {
         const btn = e.target.closest('button');
         if(!btn) return;
-        const v = btn.dataset.value;
+        let v = btn.dataset.value;
         const action = btn.dataset.action;
 
-        if(action === 'clear'){
-          expr = '';
-          updateDisplay();
-          return;
-        }
-        if(action === 'back'){
-          expr = expr.slice(0, -1);
-          updateDisplay();
-          return;
-        }
+        if(action === 'clear'){ expr = ''; updateDisplay(); return; }
+        if(action === 'back'){ expr = expr.slice(0, -1); updateDisplay(); return; }
         if(action === 'equals'){
           try{
             const val = safeEval(expr);
             expr = String(Number.isInteger(val) ? val : parseFloat(val.toFixed(10)));
             updateDisplay();
-          }catch(err){
-            resultEl.textContent = 'Błąd';
-            console.error(err);
-          }
+          }catch(err){ resultEl.textContent = 'Błąd'; }
           return;
         }
 
-        // value button pressed (number, operator or comma)
-        if(v === ',') v = '.';
-        // formatting: don't allow two operators in a row (basic)
-        const last = expr.slice(-1);
-        if(/[+\-*/%]/.test(v)){
-          if(expr === '' && v !== '-') return; // only unary minus allowed at start
-          if(/[+\-*/%]/.test(last)) {
-            // replace last operator with new one
-            expr = expr.slice(0,-1) + v;
+        if(v){
+          if(v === ',') v = '.';
+          const last = expr.slice(-1);
+          if(/[+\-*/%]/.test(v)){
+            if(expr === '' && v !== '-') return;
+            if(/[+\-*/%]/.test(last)) expr = expr.slice(0,-1) + v;
+            else expr += v;
           } else {
             expr += v;
           }
-        } else {
-          expr += v;
+          updateDisplay();
         }
-        updateDisplay();
       });
 
-      // keyboard support
       window.addEventListener('keydown', (e) => {
         const key = e.key;
-        if((/^[0-9]$/).test(key)) {
-          expr += key;
-          updateDisplay();
-          e.preventDefault();
-          return;
-        }
-        if(key === ',' || key === '.') {
-          expr += '.';
-          updateDisplay();
-          e.preventDefault();
-          return;
-        }
-        if(key === '+' || key === '-' || key === '*' || key === '/') {
+        if(/^[0-9]$/.test(key)){ expr += key; updateDisplay(); e.preventDefault(); return; }
+        if(key === ',' || key === '.'){ expr += '.'; updateDisplay(); e.preventDefault(); return; }
+        if(['+','-','*','/'].includes(key)){
           const last = expr.slice(-1);
           if(expr === '' && key !== '-') return;
-          if(/[+\-*/%]/.test(last)){
-            expr = expr.slice(0,-1) + key;
-          } else {
-            expr += key;
-          }
-          updateDisplay();
-          e.preventDefault();
-          return;
+          if(/[+\-*/%]/.test(last)) expr = expr.slice(0,-1) + key;
+          else expr += key;
+          updateDisplay(); e.preventDefault(); return;
         }
         if(key === 'Enter' || key === '='){
           try{
             const val = safeEval(expr);
             expr = String(Number.isInteger(val) ? val : parseFloat(val.toFixed(10)));
             updateDisplay();
-          }catch(err){
-            resultEl.textContent = 'Błąd';
-            console.error(err);
-          }
-          e.preventDefault();
-          return;
+          }catch(err){ resultEl.textContent = 'Błąd'; }
+          e.preventDefault(); return;
         }
-        if(key === 'Backspace'){
-          expr = expr.slice(0,-1);
-          updateDisplay();
-          e.preventDefault();
-          return;
-        }
-        if(key.toLowerCase() === 'c' && (e.ctrlKey || e.metaKey)){
-          expr = '';
-          updateDisplay();
-          e.preventDefault();
-          return;
-        }
-        // percent key
-        if(key === '%'){
-          expr += '%';
-          updateDisplay();
-          e.preventDefault();
-        }
+        if(key === 'Backspace'){ expr = expr.slice(0,-1); updateDisplay(); e.preventDefault(); return; }
+        if(key.toLowerCase() === 'c' && (e.ctrlKey || e.metaKey)){ expr = ''; updateDisplay(); e.preventDefault(); return; }
+        if(key === '%'){ expr += '%'; updateDisplay(); e.preventDefault(); }
       });
 
-      // initial render
       updateDisplay();
     })();
   </script>
 </body>
 </html>
+
 
 
